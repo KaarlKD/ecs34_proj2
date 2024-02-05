@@ -1,4 +1,8 @@
 #include "XMLReader.h"
+#include"XMLEntity.h"
+#include "DataSource.h"
+#include<string.h>
+#include<cstddef>
 #include <expat.h>
 #include "queue"
 
@@ -18,11 +22,20 @@ struct CXMLReader::SImplementation {
     }
 
     void EndElementHandler(const std::string &name) {
-        SXMLEntity TempEntity;
+        SXMLEntity entity;
+        entity.DNameData = name;
+        entity.DType = SXMLEntity::EType::EndElement;
+        DEntityQueue.push(entity);
     }
 
 
     void CharacterDataHandler(const std::string &cdata) {
+        if (!cdata.empty()) { 
+            SXMLEntity entity;
+            entity.DNameData = cdata;
+            entity.DType = SXMLEntity::EType::CharData;
+            DEntityQueue.push(entity);
+        }
     
     }
 
@@ -57,9 +70,9 @@ struct CXMLReader::SImplementation {
         XML_SetUserData(DXMLParser, this);
     }
 
-    // bool End() const {
-
-    // };
+    bool End() const {
+        return DEntityQueue.empty() && DDataSource->End();
+    };
 
     bool ReadEntity(SXMLEntity &entity, bool skipcdata) {
         //read from source, pass to parser, return the entity
@@ -83,3 +96,18 @@ struct CXMLReader::SImplementation {
 
 };
 
+CXMLReader::CXMLReader(std::shared_ptr < CDataSource > src){
+    DImplementation = std::make_unique< SImplementation >(src);
+}
+
+CXMLReader::~CXMLReader(){
+}
+
+bool CXMLReader::ReadEntity(SXMLEntity &entity, bool skipcdata = false){
+    return DImplementation->ReadEntity(entity);
+}
+
+bool CXMLReader::End() const {
+    return DImplementation->End();
+
+}
